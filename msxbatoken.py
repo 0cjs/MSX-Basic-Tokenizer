@@ -71,20 +71,6 @@ def show_log(line_number, text, level, **kwargs):
             print()
         raise SystemExit(0)
 
-local_path = os.path.split(os.path.abspath(__file__))[0] + '/'
-if os.path.isfile(local_path + 'MSXBatoken.ini'):
-    config = configparser.ConfigParser()
-    config.sections()
-    try:
-        config.read(local_path + 'MSXBatoken.ini')
-        file_load = config.get('DEFAULT', 'file_load') if config.get('DEFAULT', 'file_load') else file_load
-        file_save = config.get('DEFAULT', 'file_save') if config.get('DEFAULT', 'file_save') else file_save
-        export_list = config.getboolean('DEFAULT', 'export_list') if config.get('DEFAULT', 'export_list') else export_list
-        delete_original = config.getboolean('DEFAULT', 'delete_original') if config.get('DEFAULT', 'delete_original') else delete_original
-        verbose_level = config.getint('DEFAULT', 'verbose_level') if config.get('DEFAULT', 'verbose_level') else verbose_level
-    except (ValueError, configparser.NoOptionError) as e:
-        show_log('', 'MSXBatoken.ini: ' + str(e), 1)
-
 parser = argparse.ArgumentParser(description='Tokenize ASCII MSX Basic')
 parser.add_argument("input", nargs='?', default=file_load, help='Source file (preferible .asc)')
 parser.add_argument("output", nargs='?', default=file_save, help='Destination file ([source].bas) if missing')
