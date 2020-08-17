@@ -33,6 +33,7 @@ Notes:
 import re
 import os.path
 import binascii
+import struct
 import argparse
 import configparser
 from sys import stderr
@@ -176,6 +177,51 @@ def parse_sgn_dbl(header, precision, nugget_integer, nugget_fractional, nugget_g
     hexa += nugget_cropped
     return hexa, nugget_integer
 
+def int16le(x):
+    ' Return an integer as an unsigned 16-bit little-endian value. '
+    return struct.pack('<H', x)
+
+class Tokenized:
+    ' A tokenized BASIC program. '
+
+    def __init__(self, txttab=0x8001):
+        # TXTTAB: starting address of BASIC text area
+        self.curaddr = self.txttab = txttab
+        self.last_lineno = -1
+        self.text = bytearray()
+
+    MAX_LINENO = 65529
+
+    def checklineno(self, lineno):
+        ''' Generate a fatal error if the line number is not higher than
+            the most recently added line number or is otherwise invalid.
+        '''
+        if lineno > self.MAX_LINENO:
+            fatal('line number {} > max allowed line number {}'
+                .format(lineno, self.MAX_LINENO), lineno=lineno)
+        if lineno <= self.last_lineno:
+            fatal('previous line number {} >= line number {}'
+                .format(self.last_lineno, lineno), lineno=lineno)
+
+    def addline(self, lineno, tokenized):
+        ''' Add a tokenized line to the program text. The line should not
+            include the 0 terminator.
+        '''
+        self.checklineno(lineno); self.last_lineno = lineno
+        nextaddr = self.curaddr + 2 + 2 + len(tokenized) + 1
+        self.last_tokenized_line \
+            = int16le(nextaddr) + int16le(lineno) + tokenized + bytes([0])
+        self.text.extend(self.last_tokenized_line)
+        self.curaddr = nextaddr
+
+    def writeto(self, f):
+        ''' Write the tokenized BASIC program to a file handle, including
+            the initial 0xFF type byte.
+        '''
+        f.write(bytes([0xFF]))  # file type
+        f.write(self.text)
+        f.write(bytes([0, 0]))  # end of lines
+
 class Args:
 
     @classmethod
@@ -240,11 +286,15 @@ except IOError:
     fatal('input not found')
 
 show_log(3, 'Start tokenizing')
+
+text = Tokenized()
+
 base = 0x8001
-base_base = base
 line_order = 0
 line_number = 0
-tokenized_code = ['ff']
+
+base_base = base
+
 list_code = [
     '\' -------------------------------------',
     '\' MSX Basic Tokenizer: "{}"'.format(os.path.basename(args.input)),
@@ -252,7 +302,7 @@ list_code = [
     '\' -------------------------------------',
     '',
     ]
-list_code.append(hex(base - 1)[2:] + ': ' \
+list_code.append(hex(text.txttab-1)[2:] + ': ' \
     + 'ff' + (' ' * (args.width_line + 8)) + 'start')
 
 for line_source in ascii_code:
@@ -273,14 +323,11 @@ for line_source in ascii_code:
     # Get line number
     nugget = re.match(r'\s*\d+\s?', line_source).group()
     line_number = nugget.strip()
-    if int(line_number) <= line_order:
-        fatal('line_number_out_of_order', str(line_number), lineno=line_number)
-    if int(line_number) > 65529:
-        fatal('line_number_too_high', str(line_number), lineno=line_number)
-    line_order = int(line_number)
+    text.checklineno(int(line_number))
+
     line_source = line_source[len(nugget):]
     hexa = '{0:04x}'.format(int(nugget))
-    line_compiled += hexa[2:] + hexa[:-2]
+    line_compiled += hexa[2:] + hexa[:-2]   # swap bytes
 
     show_log(5, line_compiled + '|' + line_source.rstrip())
 
@@ -516,18 +563,15 @@ for line_source in ascii_code:
                         source = 1
                         update_lines(source, compiled)
 
-    base_prev = base
-    base += (len(line_compiled) + 6) // 2
-    hexa = '{0:04x}'.format(base)
-    line_compiled = hexa[2:] + hexa[:-2] + line_compiled
-    line_compiled += '00'
-    tokenized_code.append(line_compiled)
+    #   line_compiled includes the line number, which we must drop
+    text.addline(int(line_number), bytes.fromhex(line_compiled)[2:])
+
+    base_prev = text.curaddr
     if args.el:
-        make_list(base_prev, line_compiled, base_source)
+        make_list(base_prev, text.last_tokenized_line.hex(), base_source)
     lines_num += 1
 
 show_log(3, 'End tokenizing')
-tokenized_code.append('0000')
 list_code.append(str(hexa) \
     + ': 0000' + (' ' * (args.width_line + 6)) + 'end')
 
@@ -539,15 +583,14 @@ list_code.extend([
     '',
     'lines {}'.format(lines_num),
     'start &h{:04X} > {}'.format(base_base - 1, base_base - 1),
-    'end   &h{:04X} > {}'.format(base + 1, base + 1),
-    'size  &h{:04X} > {}'.format(base - base_base + 3, base - base_base + 3),
+    'end   &h{:04X} > {}'.format(text.curaddr + 1, text.curaddr + 1),
+    'size  &h{:04X} > {}'.format(text.curaddr - base_base + 3, text.curaddr - base_base + 3),
     ])
 
 show_log(3, 'Saving file')
 show_log(4, 'save_file:', args.output)
 with open(args.output, 'wb') as f:
-    for line in tokenized_code:
-        f.write(binascii.unhexlify(line))
+    text.writeto(f)
 
 if args.do:
     if os.path.isfile(args.output):
