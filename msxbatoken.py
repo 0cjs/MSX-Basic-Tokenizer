@@ -38,8 +38,6 @@ import configparser
 from datetime import datetime
 from os import remove as osremove
 
-file_load = ''              # Source file
-file_save = ''              # Destination file
 export_list = 0             # Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32) (0 no)
 delete_original = False     # Delete the original ASCII file
 verbose_level = 3           # Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump
@@ -109,7 +107,7 @@ def show_log(line_number, text, level, **kwargs):
 
     display_file_name = ''
     if is_from_build and (bullet == 1 or bullet == 2):
-        display_file_name = os.path.basename(file_load) + ': '
+        display_file_name = os.path.basename(args.input) + ': '
 
     line_number = '(' + str(line_number) + '): ' if line_number != '' else ''
 
@@ -208,6 +206,15 @@ class Args:
         for k, v in vars(parsed_args).items():
             setattr(self, k, v)
 
+        if not self.output:
+            self.output = os.path.splitext(self.input)[0] + '.bas'
+        if self.output == self.input:
+            #   Actually, we should handle this simply by slurping in
+            #   the entire input file before writing output, since the
+            #   input is always small (less than 32K).
+            raise RuntimeError(
+                'Cannot overwrite input file: {}'.format(self.output))
+
 ####################################################################
 #   Main
 
@@ -216,14 +223,6 @@ if args.version:
     print('MSX Basic Tokenizer v1.3')
     exit(0)
 
-file_load = args.input
-file_save = args.output
-if args.output == '':
-    save_path = os.path.dirname(file_load)
-    save_path = '' if save_path == '' else save_path + '/'
-    save_file = os.path.basename(file_load)
-    save_file = os.path.splitext(save_file)[0] + '.bas'
-    file_save = save_path + save_file
 bytes_width = min(abs(args.el), 32)
 export_list = True if args.el > 0 else False
 delete_original = args.do
@@ -234,29 +233,26 @@ lines_num = 0
 width_byte = bytes_width * 2
 width_line = bytes_width * 3 + 7
 now = datetime.now()
-list_path = os.path.dirname(file_load)
+list_path = os.path.dirname(args.input)
 list_path = '' if list_path == '' else list_path + '/'
-list_file = os.path.basename(file_load)
+list_file = os.path.basename(args.input)
 list_file = os.path.splitext(list_file)[0] + '.mlt'
 file_list = list_path + list_file
 
 show_log('', '', 3, bullet=0)
 
-if file_save == file_load:
-    show_log('', ' '.join(['destination_same_as_source', file_save]), 1)  # Exit
-
 show_log('', 'Loading file', 3)
 ascii_code = []
-if file_load:
-    show_log('', ' '.join(['load_file:', file_load]), 4)
+if args.input:
+    show_log('', ' '.join(['load_file:', args.input]), 4)
     try:
-        with open(file_load, 'r', encoding='latin1') as f:
+        with open(args.input, 'r', encoding='latin1') as f:
             for line in f:
                 if line.strip() == "" or line.strip().isdigit():
                     continue
                 ascii_code.append(line.strip() + '\r\n')
     except IOError:
-        show_log('', ' '.join(['source_not_found', file_load]), 1)  # Exit
+        show_log('', ' '.join(['source_not_found', args.input]), 1)  # Exit
 else:
     show_log('', 'source_not_given', 1)  # Exit
 
@@ -267,7 +263,7 @@ line_order = 0
 line_number = 0
 tokenized_code = ['ff']
 list_code = ["' -------------------------------------",
-             "' MSX Basic Tokenizer: " + '"' + os.path.basename(file_load) + '"',
+             "' MSX Basic Tokenizer: " + '"' + os.path.basename(args.input) + '"',
              "' Date: " + now.strftime("%Y-%m-%d %H:%M:%S"),
              "' -------------------------------------", ""]
 list_code.append(hex(base - 1)[2:] + ': ' + 'ff' + (' ' * (width_line + 8)) + 'start')
@@ -554,19 +550,19 @@ list_code.append('end   &h' + '{0:04x}'.format(base + 1) + ' > ' + str(base + 1)
 list_code.append('size  &h' + '{0:04x}'.format((base - base_base) + 3) + ' > ' + str((base - base_base) + 3))
 
 show_log('', 'Saving file', 3)
-show_log('', ' '.join(['save_file:', file_save]), 4)
-with open(file_save, 'wb') as f:
+show_log('', ' '.join(['save_file:', args.output]), 4)
+with open(args.output, 'wb') as f:
     for line in tokenized_code:
         f.write(binascii.unhexlify(line))
 
 if delete_original:
-    if os.path.isfile(file_save):
+    if os.path.isfile(args.output):
         show_log('', 'Deleting source', 3)
-        show_log('', ' '.join(['delete_file:', file_load]), 4)
-        osremove(file_load)
+        show_log('', ' '.join(['delete_file:', args.input]), 4)
+        osremove(args.input)
     else:
-        show_log('', ' '.join(['source_not_deleted', file_load]), 2)
-        show_log('', ' '.join(['converted_not_found', file_save]), 2)
+        show_log('', ' '.join(['source_not_deleted', args.input]), 2)
+        show_log('', ' '.join(['converted_not_found', args.output]), 2)
 
 if export_list:
     show_log('', 'Saving list', 3)
