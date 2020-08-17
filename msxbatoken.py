@@ -71,16 +71,32 @@ def show_log(line_number, text, level, **kwargs):
             print()
         raise SystemExit(0)
 
-parser = argparse.ArgumentParser(description='Tokenize ASCII MSX Basic')
-parser.add_argument("input", nargs='?', default=file_load, help='Source file (preferible .asc)')
-parser.add_argument("output", nargs='?', default=file_save, help='Destination file ([source].bas) if missing')
-parser.add_argument("-el", default=export_list, const=16, type=int, nargs='?', help="Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32)")
-parser.add_argument("-do", default=delete_original, action='store_true', help="Delete original file after conversion")
-parser.add_argument("-vb", default=verbose_level, type=int, help="Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump")
-parser.add_argument("-frb", default=is_from_build, action='store_true', help="Tell it is running from a build system")
-parser.add_argument('--version', default=False, action='store_true', help='show version')
-args = parser.parse_args()
+class Args:
 
+    @classmethod
+    def parse(cls, args=None):
+        parser = argparse.ArgumentParser(description='Tokenize ASCII MSX Basic')
+        arg = parser.add_argument
+        arg('input', nargs='?', help='source file')
+        arg('output', nargs='?', help='output file (default [source].bas)')
+        arg('-el', default=0, const=16, type=int, nargs='?',
+            help='Save a .mlt list file detailing the tokenization:'
+            '[#] number of bytes per line (def 16) (max 32)')
+        arg('-do', action='store_true',
+            help='delete original file after conversion')
+        arg('-vb', type=int, default=3,
+            help='verbosity level: 0 silent, 1 errors, 2 +warnings,'
+                ' 3 +steps(def), 4 +details, 5 +conversion dump')
+        arg('-frb', action='store_true',
+            help='Tell it is running from a build system')
+        arg('--version', action='store_true', help='show version')
+        return cls(parser.parse_args(args))
+
+    def __init__(self, parsed_args):
+        for k, v in vars(parsed_args).items():
+            setattr(self, k, v)
+
+args = Args.parse()
 if args.version:
     print('MSX Basic Tokenizer v1.3')
     exit(0)
