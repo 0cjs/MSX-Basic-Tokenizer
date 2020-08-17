@@ -245,10 +245,13 @@ base_base = base
 line_order = 0
 line_number = 0
 tokenized_code = ['ff']
-list_code = ["' -------------------------------------",
-             "' MSX Basic Tokenizer: " + '"' + os.path.basename(args.input) + '"',
-             "' Date: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-             "' -------------------------------------", ""]
+list_code = [
+    '\' -------------------------------------',
+    '\' MSX Basic Tokenizer: "{}"'.format(os.path.basename(args.input)),
+    '\' Date: {}'.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    '\' -------------------------------------',
+    '',
+    ]
 list_code.append(hex(base - 1)[2:] + ': ' \
     + 'ff' + (' ' * (args.width_line + 8)) + 'start')
 
@@ -528,13 +531,17 @@ tokenized_code.append('0000')
 list_code.append(str(hexa) \
     + ': 0000' + (' ' * (args.width_line + 6)) + 'end')
 
-list_code.extend(["", "' -------------------------------------",
-                      "' Statistics",
-                      "' -------------------------------------", ""])
-list_code.append('lines ' + str(lines_num))
-list_code.append('start &h' + '{0:04x}'.format(base_base - 1) + ' > ' + str(base_base - 1))
-list_code.append('end   &h' + '{0:04x}'.format(base + 1) + ' > ' + str(base + 1))
-list_code.append('size  &h' + '{0:04x}'.format((base - base_base) + 3) + ' > ' + str((base - base_base) + 3))
+list_code.extend([
+    '',
+    "' -------------------------------------",
+    "' Statistics",
+    "' -------------------------------------",
+    '',
+    'lines {}'.format(lines_num),
+    'start &h{:04X} > {}'.format(base_base - 1, base_base - 1),
+    'end   &h{:04X} > {}'.format(base + 1, base + 1),
+    'size  &h{:04X} > {}'.format(base - base_base + 3, base - base_base + 3),
+    ])
 
 show_log(3, 'Saving file')
 show_log(4, 'save_file:', args.output)
