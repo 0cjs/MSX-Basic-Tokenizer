@@ -40,7 +40,6 @@ from os import remove as osremove
 
 export_list = 0             # Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32) (0 no)
 verbose_level = 3           # Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump
-is_from_build = False       # Tell if it is being called from a build system (show file name on error messages and other stuff)
 
 TOKENS = [
     ('>', 'ee'), ('PAINT', 'bf'), ('=', 'ef'), ('ERROR', 'a6'), ('ERR', 'e2'),
@@ -105,7 +104,7 @@ def show_log(line_number, text, level, **kwargs):
         bullet = level
 
     display_file_name = ''
-    if is_from_build and (bullet == 1 or bullet == 2):
+    if (bullet == 1 or bullet == 2):
         display_file_name = os.path.basename(args.input) + ': '
 
     line_number = '(' + str(line_number) + '): ' if line_number != '' else ''
@@ -114,11 +113,8 @@ def show_log(line_number, text, level, **kwargs):
         print(bullets[bullet] + display_file_name + line_number + text)
 
     if bullet == 1:
-        if is_from_build:
-            print('    Tokenizing_aborted')
-        else:
-            print('    Execution_stoped')
-            print()
+        print('    Execution_stoped')
+        print()
         raise SystemExit(0)
 
 def update_lines(source, compiled):
@@ -196,8 +192,6 @@ class Args:
         arg('-vb', type=int, default=3,
             help='verbosity level: 0 silent, 1 errors, 2 +warnings,'
                 ' 3 +steps(def), 4 +details, 5 +conversion dump')
-        arg('-frb', action='store_true',
-            help='Tell it is running from a build system')
         arg('--version', action='store_true', help='show version')
         return cls(parser.parse_args(args))
 
@@ -225,7 +219,6 @@ if args.version:
 bytes_width = min(abs(args.el), 32)
 export_list = True if args.el > 0 else False
 verbose_level = args.vb
-is_from_build = args.frb
 
 lines_num = 0
 width_byte = bytes_width * 2

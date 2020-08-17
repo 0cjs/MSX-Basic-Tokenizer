@@ -9,7 +9,7 @@ Tokenize ASCII MSX Basic programs.
   
 ### How to use  
   
-`msxbatoken.py <source> [destination] [-do] [-el [0-32]] [-vb <0-5>] [-frb]`  
+`msxbatoken.py <source> [destination] [-do] [-el [0-32]] [-vb <0-5>]`  
   
 Arguments can be passed on the code itself, on `MSXBatoken.ini` or through the command line with each method having a priority higher than the one before.  
   
@@ -79,10 +79,6 @@ Arguments can be passed on the code itself, on `MSXBatoken.ini` or through the c
 	140089| 10  
 	140089200e0a00|  
 	```  
-  
-- *From Build:*  
-	Tells **MSX Basic Tokenizer** it is running from a build system (or an external program) and adjust some behaviours accordingly.  
-	arg: `-frb`  
   
 ### Notes  
   
