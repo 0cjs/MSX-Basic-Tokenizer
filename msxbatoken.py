@@ -38,8 +38,6 @@ import configparser
 from datetime import datetime
 from os import remove as osremove
 
-export_list = 0             # Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32) (0 no)
-
 TOKENS = [
     ('>', 'ee'), ('PAINT', 'bf'), ('=', 'ef'), ('ERROR', 'a6'), ('ERR', 'e2'),
     ('<', 'f0'), ('+', 'f1'), ('FIELD', 'b1'), ('PLAY', 'c1'), ('-', 'f2'),
@@ -139,14 +137,16 @@ def make_list(base_prev, compiled, source):
     next_addr = str(compiled[0:4])
     curr_line = str(compiled[4:8])
     line_byte = str(compiled[8:])
-    line_splt = [line_byte[i:i + width_byte] for i in range(0, len(line_byte), width_byte)]
+    line_splt = [ line_byte[i:i + args.width_byte]
+                  for i in range(0, len(line_byte), args.width_byte) ]
     for line in line_splt:
         curr_addr = str(hex(base_prev)[2:][:-2]) + str(hex(base_prev)[2:][2:])
 
         byte_splt = ' '.join([line[i:i + 2] for i in range(0, len(line), 2)])
 
         line_list = curr_addr + ': ' + next_addr + ' ' + curr_line + ' ' \
-            + byte_splt + (' ' * (width_line - len(byte_splt))) + source.rstrip()
+            + byte_splt + (' ' * (args.width_line - len(byte_splt))) \
+            + source.rstrip()
 
         list_code.append(line_list)
         next_addr, curr_line, source = '        ', '', ''
@@ -183,9 +183,9 @@ class Args:
         arg = parser.add_argument
         arg('input', nargs='?', help='source file')
         arg('output', nargs='?', help='output file (default [source].bas)')
-        arg('-el', default=0, const=16, type=int, nargs='?',
+        arg('-el', default=0, type=int, nargs='?',
             help='Save a .mlt list file detailing the tokenization:'
-            '[#] number of bytes per line (def 16) (max 32)')
+            '[#] number of bytes per line (max 32)')
         arg('-do', action='store_true',
             help='delete original file after conversion')
         arg('-vb', type=int, default=3,
@@ -207,6 +207,10 @@ class Args:
             raise RuntimeError(
                 'Cannot overwrite input file: {}'.format(self.output))
 
+        bytes_width = min(abs(self.el), 32)
+        self.width_byte = bytes_width * 2
+        self.width_line = bytes_width * 3 + 7
+
 ####################################################################
 #   Main
 
@@ -215,12 +219,7 @@ if args.version:
     print('MSX Basic Tokenizer v1.3')
     exit(0)
 
-bytes_width = min(abs(args.el), 32)
-export_list = True if args.el > 0 else False
-
 lines_num = 0
-width_byte = bytes_width * 2
-width_line = bytes_width * 3 + 7
 now = datetime.now()
 list_path = os.path.dirname(args.input)
 list_path = '' if list_path == '' else list_path + '/'
@@ -255,7 +254,8 @@ list_code = ["' -------------------------------------",
              "' MSX Basic Tokenizer: " + '"' + os.path.basename(args.input) + '"',
              "' Date: " + now.strftime("%Y-%m-%d %H:%M:%S"),
              "' -------------------------------------", ""]
-list_code.append(hex(base - 1)[2:] + ': ' + 'ff' + (' ' * (width_line + 8)) + 'start')
+list_code.append(hex(base - 1)[2:] + ': ' \
+    + 'ff' + (' ' * (args.width_line + 8)) + 'start')
 
 for line_source in ascii_code:
     if ord(line_source[0]) < 48 or ord(line_source[0]) > 57:
@@ -522,13 +522,14 @@ for line_source in ascii_code:
     line_compiled = hexa[2:] + hexa[:-2] + line_compiled
     line_compiled += '00'
     tokenized_code.append(line_compiled)
-    if export_list:
+    if args.el:
         make_list(base_prev, line_compiled, base_source)
     lines_num += 1
 
 show_log('', 'End tokenizing', 3)
 tokenized_code.append('0000')
-list_code.append(str(hexa) + ': 0000' + (' ' * (width_line + 6)) + 'end')
+list_code.append(str(hexa) \
+    + ': 0000' + (' ' * (args.width_line + 6)) + 'end')
 
 list_code.extend(["", "' -------------------------------------",
                       "' Statistics",
@@ -553,7 +554,7 @@ if args.do:
         show_log('', ' '.join(['source_not_deleted', args.input]), 2)
         show_log('', ' '.join(['converted_not_found', args.output]), 2)
 
-if export_list:
+if args.el:
     show_log('', 'Saving list', 3)
     show_log('', ' '.join(['save_list:', file_list]), 4)
     with open(file_list, 'w') as f:
