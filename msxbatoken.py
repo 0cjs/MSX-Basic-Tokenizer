@@ -222,7 +222,6 @@ if args.version:
     exit(0)
 
 lines_num = 0
-now = datetime.now()
 
 show_log('', '', 3, bullet=0)
 
@@ -249,7 +248,7 @@ line_number = 0
 tokenized_code = ['ff']
 list_code = ["' -------------------------------------",
              "' MSX Basic Tokenizer: " + '"' + os.path.basename(args.input) + '"',
-             "' Date: " + now.strftime("%Y-%m-%d %H:%M:%S"),
+             "' Date: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
              "' -------------------------------------", ""]
 list_code.append(hex(base - 1)[2:] + ': ' \
     + 'ff' + (' ' * (args.width_line + 8)) + 'start')
