@@ -92,24 +92,19 @@ JUMPS = [
     'LIST', 'LLIST', 'GOTO', 'RETURN', 'THEN', 'GOSUB',
 ]
 
-def show_log(line_number, text, level, **kwargs):
+def show_log(line_number, text, level):
     bullets = ['', '*** ', '  * ', '--- ', '  - ', '    ']
 
-    try:
-        bullet = kwargs['bullet']
-    except KeyError:
-        bullet = level
-
     display_file_name = ''
-    if (bullet == 1 or bullet == 2):
+    if (level == 1 or level == 2):
         display_file_name = os.path.basename(args.input) + ': '
 
     line_number = '(' + str(line_number) + '): ' if line_number != '' else ''
 
     if args.vb >= level:
-        print(bullets[bullet] + display_file_name + line_number + text)
+        print(bullets[level] + display_file_name + line_number + text)
 
-    if bullet == 1:
+    if level == 1:
         print('    Execution_stoped')
         print()
         raise SystemExit(0)
@@ -222,8 +217,6 @@ if args.version:
     exit(0)
 
 lines_num = 0
-
-show_log('', '', 3, bullet=0)
 
 show_log('', 'Loading file', 3)
 ascii_code = []
@@ -556,5 +549,3 @@ if args.el:
     with open(args.list_file, 'w') as f:
         for line in list_code:
             f.write(line + '\n')
-
-show_log('', '', 3, bullet=0)
