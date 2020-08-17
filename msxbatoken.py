@@ -207,6 +207,8 @@ class Args:
             raise RuntimeError(
                 'Cannot overwrite input file: {}'.format(self.output))
 
+        self.list_file = os.path.splitext(self.input)[0] + '.mlt'
+
         bytes_width = min(abs(self.el), 32)
         self.width_byte = bytes_width * 2
         self.width_line = bytes_width * 3 + 7
@@ -221,11 +223,6 @@ if args.version:
 
 lines_num = 0
 now = datetime.now()
-list_path = os.path.dirname(args.input)
-list_path = '' if list_path == '' else list_path + '/'
-list_file = os.path.basename(args.input)
-list_file = os.path.splitext(list_file)[0] + '.mlt'
-file_list = list_path + list_file
 
 show_log('', '', 3, bullet=0)
 
@@ -556,8 +553,8 @@ if args.do:
 
 if args.el:
     show_log('', 'Saving list', 3)
-    show_log('', ' '.join(['save_list:', file_list]), 4)
-    with open(file_list, 'w') as f:
+    show_log('', ' '.join(['save_list:', args.list_file]), 4)
+    with open(args.list_file, 'w') as f:
         for line in list_code:
             f.write(line + '\n')
 
