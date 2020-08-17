@@ -45,6 +45,59 @@ delete_original = False     # Delete the original ASCII file
 verbose_level = 3           # Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump
 is_from_build = False       # Tell if it is being called from a build system (show file name on error messages and other stuff)
 
+TOKENS = [
+    ('>', 'ee'), ('PAINT', 'bf'), ('=', 'ef'), ('ERROR', 'a6'), ('ERR', 'e2'),
+    ('<', 'f0'), ('+', 'f1'), ('FIELD', 'b1'), ('PLAY', 'c1'), ('-', 'f2'),
+    ('FILES', 'b7'), ('POINT', 'ed'), ('*', 'f3'), ('POKE', '98'), ('/', 'f4'),
+    ('FN', 'de'), ('^', 'f5'), ('FOR', '82'), ('PRESET', 'c3'), ('\\', 'fc'),
+    ('PRINT', '91'), ('?', '91'), ('PSET', 'c2'), ('AND', 'f6'), ('GET', 'b2'),
+    ('PUT', 'b3'), ('GOSUB', '8d'), ('READ', '87'), ('GOTO', '89'),
+    ('ATTR$', 'e9'), ('RENUM', 'aa'), ('AUTO', 'a9'), ('IF', '8b'),
+    ('RESTORE', '8c'), ('BASE', 'c9'), ('IMP', 'fa'), ('RESUME', 'a7'),
+    ('BEEP', 'c0'), ('INKEY$', 'ec'), ('RETURN', '8e'), ('BLOAD', 'cf'),
+    ('INPUT', '85'), ('BSAVE', 'd0'), ('INSTR', 'e5'), ('RSET', 'b9'),
+    ('CALL', 'ca'), ('_', '5f'), ('RUN', '8a'), ('IPL', 'd5'), ('SAVE', 'ba'),
+    ('KEY', 'cc'), ('SCREEN', 'c5'), ('KILL', 'd4'), ('SET', 'd2'),
+    ('CIRCLE', 'bc'), ('CLEAR', '92'), ('CLOAD', '9b'), ('LET', '88'),
+    ('SOUND', 'c4'), ('CLOSE', 'b4'), ('LFILES', 'bb'), ('CLS', '9f'),
+    ('LINE', 'af'), ('SPC(', 'df'), ('CMD', 'd7'), ('LIST', '93'),
+    ('SPRITE', 'c7'), ('COLOR', 'bd'), ('LLIST', '9e'), ('CONT', '99'),
+    ('LOAD', 'b5'), ('STEP', 'dc'), ('COPY', 'd6'), ('LOCATE', 'd8'),
+    ('STOP', '90'), ('CSAVE', '9a'), ('CSRLIN', 'e8'), ('STRING$', 'e3'),
+    ('LPRINT', '9d'), ('SWAP', 'a4'), ('LSET', 'b8'), ('TAB(', 'db'),
+    ('MAX', 'cd'), ('DATA', '84'), ('MERGE', 'b6'), ('THEN', 'da'),
+    ('TIME', 'cb'), ('TO', 'd9'), ('DEFDBL', 'ae'), ('DEFINT', 'ac'),
+    ('DEFSTR', 'ab'), ('TROFF', 'a3'), ('DEFSNG', 'ad'), ('TRON', 'a2'),
+    ('DEF', '97'), ('MOD', 'fb'), ('USING', 'e4'), ('DELETE', 'a8'),
+    ('MOTOR', 'ce'), ('USR', 'dd'), ('DIM', '86'), ('NAME', 'd3'),
+    ('DRAW', 'be'), ('NEW', '94'), ('VARPTR', 'e7'), ('NEXT', '83'),
+    ('VDP', 'c8'), ('DSKI$', 'ea'), ('NOT', 'e0'), ('DSKO$', 'd1'),
+    ('VPOKE', 'c6'), ('OFF', 'eb'), ('WAIT', '96'), ('END', '81'),
+    ('ON', '95'), ('WIDTH', 'a0'), ('OPEN', 'b0'), ('XOR', 'f8'),
+    ('EQV', 'f9'), ('OR', 'f7'), ('ERASE', 'a5'), ('OUT', '9c'), ('ERL', 'e1'),
+    ('REM', '8f'),
+
+    ('PDL', 'ffa4'), ('EXP', 'ff8b'), ('PEEK', 'ff97'), ('FIX', 'ffa1'),
+    ('POS', 'ff91'), ('FPOS', 'ffa7'), ('ABS', 'ff86'), ('FRE', 'ff8f'),
+    ('ASC', 'ff95'), ('ATN', 'ff8e'), ('HEX$', 'ff9b'), ('BIN$', 'ff9d'),
+    ('INP', 'ff90'), ('RIGHT$', 'ff82'), ('RND', 'ff88'), ('INT', 'ff85'),
+    ('CDBL', 'ffa0'), ('CHR$', 'ff96'), ('CINT', 'ff9e'), ('LEFT$', 'ff81'),
+    ('SGN', 'ff84'), ('LEN', 'ff92'), ('SIN', 'ff89'), ('SPACE$', 'ff99'),
+    ('SQR', 'ff87'), ('LOC(', 'ffac28'), ('STICK', 'ffa2'),
+    ('COS', 'ff8c'), ('LOF', 'ffad'), ('STR$', 'ff93'), ('CSNG', 'ff9f'),
+    ('LOG', 'ff8a'), ('STRIG', 'ffa3'), ('LPOS', 'ff9c'), ('CVD', 'ffaa'),
+    ('CVI', 'ffa8'), ('CVS', 'ffa9'), ('TAN', 'ff8d'), ('MID$', 'ff83'),
+    ('MKD$', 'ffb0'), ('MKI$', 'ffae'), ('MKS$', 'ffaf'), ('VAL', 'ff94'),
+    ('DSKF', 'ffa6'), ('VPEEK', 'ff98'), ('OCT$', 'ff9a'), ('EOF', 'ffab'),
+    ('PAD', 'ffa5'),
+
+    ("'", '3a8fe6'), ('ELSE', '3aa1'), ('AS', '4153'),
+]
+
+JUMPS = [
+    'RESTORE', 'AUTO', 'RENUM', 'DELETE', 'RESUME', 'ERL', 'ELSE', 'RUN',
+    'LIST', 'LLIST', 'GOTO', 'RETURN', 'THEN', 'GOSUB',
+]
 
 def show_log(line_number, text, level, **kwargs):
     bullets = ['', '*** ', '  * ', '--- ', '  - ', '    ']
@@ -71,6 +124,65 @@ def show_log(line_number, text, level, **kwargs):
             print()
         raise SystemExit(0)
 
+def update_lines(source, compiled):
+    global line_compiled
+    global line_source
+    if len(line_source) > 2:
+        line_source = line_source[source:]
+        line_compiled = line_compiled + compiled
+        show_log('', ' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
+
+def parse_numeric_bases(nugget_comp, token, base):
+    if not nugget_comp:
+        nugget_comp = ''
+        hexa = '0000'
+    else:
+        if int(nugget_comp, base) > 65535:
+            show_log(line_number, ' '.join(['overflow', nugget_comp]), 1)  # Exit
+        hexa = '{0:04x}'.format(int(nugget_comp, base))
+    return token + hexa[2:] + hexa[:-2]
+
+def make_list(base_prev, compiled, source):
+    line_inc = 12
+    next_addr = str(compiled[0:4])
+    curr_line = str(compiled[4:8])
+    line_byte = str(compiled[8:])
+    line_splt = [line_byte[i:i + width_byte] for i in range(0, len(line_byte), width_byte)]
+    for line in line_splt:
+        curr_addr = str(hex(base_prev)[2:][:-2]) + str(hex(base_prev)[2:][2:])
+
+        byte_splt = ' '.join([line[i:i + 2] for i in range(0, len(line), 2)])
+
+        line_list = curr_addr + ': ' + next_addr + ' ' + curr_line + ' ' \
+            + byte_splt + (' ' * (width_line - len(byte_splt))) + source.rstrip()
+
+        list_code.append(line_list)
+        next_addr, curr_line, source = '        ', '', ''
+        base_prev += line_inc
+        line_inc = len(line) // 2
+
+def parse_sgn_dbl(header, precision, nugget_integer, nugget_fractional, nugget_group_1_orig, nugget_number):
+    nugget_stripped = nugget_integer.lstrip('0')
+    if nugget_stripped == '':
+        if nugget_fractional == '' or int(str(nugget_fractional[1:]) + '0') == 0:
+            nugget_stripped = '0'
+            hexa_precision = '00'
+        else:
+            nugget_integer = nugget_group_1_orig
+            if str(nugget_fractional[1]) == '0':
+                nugget_zeros = nugget_fractional[1:].rstrip('0')
+                hexa_precision = '{0:02x}'.format(64 - (len(nugget_zeros) - len(nugget_zeros.lstrip('0'))))
+            else:
+                hexa_precision = '40'
+    else:
+        hexa_precision = '{0:02x}'.format(len(nugget_stripped) + 64)
+    hexa = header + hexa_precision
+    cropped = str(int(nugget_number))
+    round_digit = int(cropped[precision:precision + 1]) if cropped[precision:precision + 1].isdigit() else 0
+    nugget_cropped = cropped[0:precision] if round_digit < 5 else str(int(cropped[:precision]) + 1)
+    hexa += nugget_cropped
+    return hexa, nugget_integer
+
 class Args:
 
     @classmethod
@@ -95,6 +207,9 @@ class Args:
     def __init__(self, parsed_args):
         for k, v in vars(parsed_args).items():
             setattr(self, k, v)
+
+####################################################################
+#   Main
 
 args = Args.parse()
 if args.version:
@@ -124,100 +239,6 @@ list_path = '' if list_path == '' else list_path + '/'
 list_file = os.path.basename(file_load)
 list_file = os.path.splitext(list_file)[0] + '.mlt'
 file_list = list_path + list_file
-tokens = [('>', 'ee'), ('PAINT', 'bf'), ('=', 'ef'), ('ERROR', 'a6'), ('ERR', 'e2'), ('<', 'f0'), ('+', 'f1'),
-          ('FIELD', 'b1'), ('PLAY', 'c1'), ('-', 'f2'), ('FILES', 'b7'), ('POINT', 'ed'), ('*', 'f3'), ('POKE', '98'),
-          ('/', 'f4'), ('FN', 'de'), ('^', 'f5'), ('FOR', '82'), ('PRESET', 'c3'), ('\\', 'fc'), ('PRINT', '91'), ('?', '91'),
-          ('PSET', 'c2'), ('AND', 'f6'), ('GET', 'b2'), ('PUT', 'b3'), ('GOSUB', '8d'), ('READ', '87'), ('GOTO', '89'),
-          ('ATTR$', 'e9'), ('RENUM', 'aa'), ('AUTO', 'a9'), ('IF', '8b'), ('RESTORE', '8c'), ('BASE', 'c9'), ('IMP', 'fa'),
-          ('RESUME', 'a7'), ('BEEP', 'c0'), ('INKEY$', 'ec'), ('RETURN', '8e'), ('BLOAD', 'cf'), ('INPUT', '85'),
-          ('BSAVE', 'd0'), ('INSTR', 'e5'), ('RSET', 'b9'), ('CALL', 'ca'), ('_', '5f'), ('RUN', '8a'), ('IPL', 'd5'), ('SAVE', 'ba'),
-          ('KEY', 'cc'), ('SCREEN', 'c5'), ('KILL', 'd4'), ('SET', 'd2'), ('CIRCLE', 'bc'), ('CLEAR', '92'), ('CLOAD', '9b'),
-          ('LET', '88'), ('SOUND', 'c4'), ('CLOSE', 'b4'), ('LFILES', 'bb'), ('CLS', '9f'), ('LINE', 'af'), ('SPC(', 'df'),
-          ('CMD', 'd7'), ('LIST', '93'), ('SPRITE', 'c7'), ('COLOR', 'bd'), ('LLIST', '9e'), ('CONT', '99'), ('LOAD', 'b5'),
-          ('STEP', 'dc'), ('COPY', 'd6'), ('LOCATE', 'd8'), ('STOP', '90'), ('CSAVE', '9a'), ('CSRLIN', 'e8'),
-          ('STRING$', 'e3'), ('LPRINT', '9d'), ('SWAP', 'a4'), ('LSET', 'b8'), ('TAB(', 'db'), ('MAX', 'cd'), ('DATA', '84'),
-          ('MERGE', 'b6'), ('THEN', 'da'), ('TIME', 'cb'), ('TO', 'd9'), ('DEFDBL', 'ae'), ('DEFINT', 'ac'), ('DEFSTR', 'ab'),
-          ('TROFF', 'a3'), ('DEFSNG', 'ad'), ('TRON', 'a2'), ('DEF', '97'), ('MOD', 'fb'), ('USING', 'e4'),
-          ('DELETE', 'a8'), ('MOTOR', 'ce'), ('USR', 'dd'), ('DIM', '86'), ('NAME', 'd3'), ('DRAW', 'be'), ('NEW', '94'),
-          ('VARPTR', 'e7'), ('NEXT', '83'), ('VDP', 'c8'), ('DSKI$', 'ea'), ('NOT', 'e0'), ('DSKO$', 'd1'), ('VPOKE', 'c6'),
-          ('OFF', 'eb'), ('WAIT', '96'), ('END', '81'), ('ON', '95'), ('WIDTH', 'a0'), ('OPEN', 'b0'), ('XOR', 'f8'),
-          ('EQV', 'f9'), ('OR', 'f7'), ('ERASE', 'a5'), ('OUT', '9c'), ('ERL', 'e1'), ('REM', '8f'),
-
-          ('PDL', 'ffa4'), ('EXP', 'ff8b'), ('PEEK', 'ff97'), ('FIX', 'ffa1'), ('POS', 'ff91'), ('FPOS', 'ffa7'),
-          ('ABS', 'ff86'), ('FRE', 'ff8f'), ('ASC', 'ff95'), ('ATN', 'ff8e'), ('HEX$', 'ff9b'), ('BIN$', 'ff9d'),
-          ('INP', 'ff90'), ('RIGHT$', 'ff82'), ('RND', 'ff88'), ('INT', 'ff85'), ('CDBL', 'ffa0'), ('CHR$', 'ff96'),
-          ('CINT', 'ff9e'), ('LEFT$', 'ff81'), ('SGN', 'ff84'), ('LEN', 'ff92'), ('SIN', 'ff89'), ('SPACE$', 'ff99'),
-          ('SQR', 'ff87'), ('LOC(', 'ffac28'), ('STICK', 'ffa2'), ('COS', 'ff8c'), ('LOF', 'ffad'), ('STR$', 'ff93'),
-          ('CSNG', 'ff9f'), ('LOG', 'ff8a'), ('STRIG', 'ffa3'), ('LPOS', 'ff9c'), ('CVD', 'ffaa'), ('CVI', 'ffa8'),
-          ('CVS', 'ffa9'), ('TAN', 'ff8d'), ('MID$', 'ff83'), ('MKD$', 'ffb0'), ('MKI$', 'ffae'), ('MKS$', 'ffaf'),
-          ('VAL', 'ff94'), ('DSKF', 'ffa6'), ('VPEEK', 'ff98'), ('OCT$', 'ff9a'), ('EOF', 'ffab'), ('PAD', 'ffa5'),
-
-          ("'", '3a8fe6'), ('ELSE', '3aa1'), ('AS', '4153')]
-jumps = ['RESTORE', 'AUTO', 'RENUM', 'DELETE', 'RESUME', 'ERL', 'ELSE', 'RUN', 'LIST', 'LLIST', 'GOTO', 'RETURN', 'THEN', 'GOSUB']
-
-
-def update_lines(source, compiled):
-    global line_compiled
-    global line_source
-    if len(line_source) > 2:
-        line_source = line_source[source:]
-        line_compiled = line_compiled + compiled
-        show_log('', ' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
-
-
-def parse_numeric_bases(nugget_comp, token, base):
-    if not nugget_comp:
-        nugget_comp = ''
-        hexa = '0000'
-    else:
-        if int(nugget_comp, base) > 65535:
-            show_log(line_number, ' '.join(['overflow', nugget_comp]), 1)  # Exit
-        hexa = '{0:04x}'.format(int(nugget_comp, base))
-    return token + hexa[2:] + hexa[:-2]
-
-
-def make_list(base_prev, compiled, source):
-    line_inc = 12
-    next_addr = str(compiled[0:4])
-    curr_line = str(compiled[4:8])
-    line_byte = str(compiled[8:])
-    line_splt = [line_byte[i:i + width_byte] for i in range(0, len(line_byte), width_byte)]
-    for line in line_splt:
-        curr_addr = str(hex(base_prev)[2:][:-2]) + str(hex(base_prev)[2:][2:])
-
-        byte_splt = ' '.join([line[i:i + 2] for i in range(0, len(line), 2)])
-
-        line_list = curr_addr + ': ' + next_addr + ' ' + curr_line + ' ' \
-            + byte_splt + (' ' * (width_line - len(byte_splt))) + source.rstrip()
-
-        list_code.append(line_list)
-        next_addr, curr_line, source = '        ', '', ''
-        base_prev += line_inc
-        line_inc = len(line) // 2
-
-
-def parse_sgn_dbl(header, precision, nugget_integer, nugget_fractional, nugget_group_1_orig, nugget_number):
-    nugget_stripped = nugget_integer.lstrip('0')
-    if nugget_stripped == '':
-        if nugget_fractional == '' or int(str(nugget_fractional[1:]) + '0') == 0:
-            nugget_stripped = '0'
-            hexa_precision = '00'
-        else:
-            nugget_integer = nugget_group_1_orig
-            if str(nugget_fractional[1]) == '0':
-                nugget_zeros = nugget_fractional[1:].rstrip('0')
-                hexa_precision = '{0:02x}'.format(64 - (len(nugget_zeros) - len(nugget_zeros.lstrip('0'))))
-            else:
-                hexa_precision = '40'
-    else:
-        hexa_precision = '{0:02x}'.format(len(nugget_stripped) + 64)
-    hexa = header + hexa_precision
-    cropped = str(int(nugget_number))
-    round_digit = int(cropped[precision:precision + 1]) if cropped[precision:precision + 1].isdigit() else 0
-    nugget_cropped = cropped[0:precision] if round_digit < 5 else str(int(cropped[:precision]) + 1)
-    hexa += nugget_cropped
-    return hexa, nugget_integer
-
 
 show_log('', '', 3, bullet=0)
 
@@ -282,7 +303,7 @@ for line_source in ascii_code:
 
     # Look for instructions
     while len(line_source) > 2:
-        for command, token in tokens:
+        for command, token in TOKENS:
             if line_source.upper().startswith(command):
                 compiled = token
                 source = len(command)
@@ -300,7 +321,7 @@ for line_source in ascii_code:
                         update_lines(source, compiled)
 
                 # Is a jumping instructions
-                if command in jumps:
+                if command in JUMPS:
                     while True:
                         nugget = re.match(r'(\s*)(\d+|,+)', line_source)
                         if nugget:
@@ -493,7 +514,7 @@ for line_source in ascii_code:
                         is_var = True
                         while True:
                             nugget = line_source[0].upper()
-                            for command, token in tokens:
+                            for command, token in TOKENS:
                                 if line_source.upper().startswith(command):
                                     is_var = False
                             if (ord(nugget) < 48 or ord(nugget) > 57) \
