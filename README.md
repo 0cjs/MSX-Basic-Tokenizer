@@ -1,8 +1,7 @@
 <img src="https://github.com/farique1/MSX-Basic-Tokenizer/blob/master/Images/GitHub_Batoken_Logo-02.png" alt="MSX Basic Tokenizer" width="290" height="130">  
   
 # MSX Basic Tokenizer  
-**v1.3** - **Python 3.8!**  
-  
+
 Tokenize ASCII MSX Basic programs.  
   
 > **MSX Basic Tokenizer** is now fully integrated with the **Badig**  ecosystem.  

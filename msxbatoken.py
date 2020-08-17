@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 MSX Basic Tokenizer
-v1.3
 Convert ASCII MSX Basic to tokenized format
 
 Copyright (C) 2019-2020 - Fred Rique (farique)
@@ -15,15 +14,6 @@ Syntax Highlight, Theme, Build System, Comment Preference and Auto Completion.
 MSX Basic Dignified at
 https://github.com/farique1/msx-basic-dignified
 Convert modern MSX Basic Dignified to traditional MSX Basic format.
-
-msxbatoken.py <source> <destination> [args...]
-msxbatoken.py -h for help.
-
-New: 1.3 14-02-2020
-    Python 3.8.
-    No more forcing an 8 character file name.
-    Changed -fb to -frb.
-    Warning issued if didn't delete original.
 
 Notes:
     Known discrepancies:
@@ -81,7 +71,6 @@ def show_log(line_number, text, level, **kwargs):
             print()
         raise SystemExit(0)
 
-
 local_path = os.path.split(os.path.abspath(__file__))[0] + '/'
 if os.path.isfile(local_path + 'MSXBatoken.ini'):
     config = configparser.ConfigParser()
@@ -103,7 +92,12 @@ parser.add_argument("-el", default=export_list, const=16, type=int, nargs='?', h
 parser.add_argument("-do", default=delete_original, action='store_true', help="Delete original file after conversion")
 parser.add_argument("-vb", default=verbose_level, type=int, help="Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump")
 parser.add_argument("-frb", default=is_from_build, action='store_true', help="Tell it is running from a build system")
+parser.add_argument('--version', default=False, action='store_true', help='show version')
 args = parser.parse_args()
+
+if args.version:
+    print('MSX Basic Tokenizer v1.3')
+    exit(0)
 
 file_load = args.input
 file_save = args.output
