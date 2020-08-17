@@ -93,17 +93,15 @@ JUMPS = [
     'LIST', 'LLIST', 'GOTO', 'RETURN', 'THEN', 'GOSUB',
 ]
 
-def show_log(line_number, text, level):
+def show_log(text, level):
     bullets = ['', '*** ', '  * ', '--- ', '  - ', '    ']
 
     display_file_name = ''
     if (level == 1 or level == 2):
         display_file_name = os.path.basename(args.input) + ': '
 
-    line_number = '(' + str(line_number) + '): ' if line_number != '' else ''
-
     if args.vb >= level:
-        print(bullets[level] + display_file_name + line_number + text)
+        print(bullets[level] + display_file_name + text)
 
 def fatal(*msgparts, lineno=None):
     ''' Fatal error: print the file, line number (if provided) and
@@ -123,7 +121,7 @@ def update_lines(source, compiled):
     if len(line_source) > 2:
         line_source = line_source[source:]
         line_compiled = line_compiled + compiled
-        show_log('', ' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
+        show_log(' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
 
 def parse_numeric_bases(nugget_comp, token, base):
     if not nugget_comp:
@@ -229,9 +227,9 @@ if args.version:
 
 lines_num = 0
 
-show_log('', 'Loading file', 3)
+show_log('Loading file', 3)
 ascii_code = []
-show_log('', ' '.join(['load_file:', args.input]), 4)
+show_log(' '.join(['load_file:', args.input]), 4)
 try:
     with open(args.input, 'r', encoding='latin1') as f:
         for line in f:
@@ -241,7 +239,7 @@ try:
 except IOError:
     fatal('input not found')
 
-show_log('', 'Start tokenizing', 3)
+show_log('Start tokenizing', 3)
 base = 0x8001
 base_base = base
 line_order = 0
@@ -267,7 +265,7 @@ for line_source in ascii_code:
     base_source = line_source
     line_compiled = ''
 
-    show_log('', ' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
+    show_log(' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
 
     # Get line number
     nugget = re.match(r'\s*\d+\s?', line_source).group()
@@ -281,7 +279,7 @@ for line_source in ascii_code:
     hexa = '{0:04x}'.format(int(nugget))
     line_compiled += hexa[2:] + hexa[:-2]
 
-    show_log('', ' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
+    show_log(' '.join([line_compiled + '|' + line_source.rstrip()]), 5)
 
     # Look for instructions
     while len(line_source) > 2:
@@ -525,7 +523,7 @@ for line_source in ascii_code:
         make_list(base_prev, line_compiled, base_source)
     lines_num += 1
 
-show_log('', 'End tokenizing', 3)
+show_log('End tokenizing', 3)
 tokenized_code.append('0000')
 list_code.append(str(hexa) \
     + ': 0000' + (' ' * (args.width_line + 6)) + 'end')
@@ -538,24 +536,24 @@ list_code.append('start &h' + '{0:04x}'.format(base_base - 1) + ' > ' + str(base
 list_code.append('end   &h' + '{0:04x}'.format(base + 1) + ' > ' + str(base + 1))
 list_code.append('size  &h' + '{0:04x}'.format((base - base_base) + 3) + ' > ' + str((base - base_base) + 3))
 
-show_log('', 'Saving file', 3)
-show_log('', ' '.join(['save_file:', args.output]), 4)
+show_log('Saving file', 3)
+show_log(' '.join(['save_file:', args.output]), 4)
 with open(args.output, 'wb') as f:
     for line in tokenized_code:
         f.write(binascii.unhexlify(line))
 
 if args.do:
     if os.path.isfile(args.output):
-        show_log('', 'Deleting source', 3)
-        show_log('', ' '.join(['delete_file:', args.input]), 4)
+        show_log('Deleting source', 3)
+        show_log(' '.join(['delete_file:', args.input]), 4)
         osremove(args.input)
     else:
-        show_log('', ' '.join(['source_not_deleted', args.input]), 2)
-        show_log('', ' '.join(['converted_not_found', args.output]), 2)
+        show_log(' '.join(['source_not_deleted', args.input]), 2)
+        show_log(' '.join(['converted_not_found', args.output]), 2)
 
 if args.el:
-    show_log('', 'Saving list', 3)
-    show_log('', ' '.join(['save_list:', args.list_file]), 4)
+    show_log('Saving list', 3)
+    show_log(' '.join(['save_list:', args.list_file]), 4)
     with open(args.list_file, 'w') as f:
         for line in list_code:
             f.write(line + '\n')
