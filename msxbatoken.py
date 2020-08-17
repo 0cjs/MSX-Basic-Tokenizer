@@ -35,6 +35,7 @@ import os.path
 import binascii
 import argparse
 import configparser
+from sys import stderr
 from datetime import datetime
 from os import remove as osremove
 
@@ -104,10 +105,17 @@ def show_log(line_number, text, level):
     if args.vb >= level:
         print(bullets[level] + display_file_name + line_number + text)
 
-    if level == 1:
-        print('    Execution_stoped')
-        print()
-        raise SystemExit(0)
+def fatal(*msgparts, lineno=None):
+    ''' Fatal error: print the file, line number (if provided) and
+        *msgparts joined by spaces to stderr and exit with an error code.
+    '''
+    filename = os.path.basename(args.input)
+    message = ' '.join(msgparts)
+    if lineno is not None:
+        print('*** {} ({}): {}'.format(filename, lineno, message), file=stderr)
+    else:
+        print('*** {}: {}'.format(filename, message), file=stderr)
+    exit(1)
 
 def update_lines(source, compiled):
     global line_compiled
@@ -123,7 +131,7 @@ def parse_numeric_bases(nugget_comp, token, base):
         hexa = '0000'
     else:
         if int(nugget_comp, base) > 65535:
-            show_log(line_number, ' '.join(['overflow', nugget_comp]), 1)  # Exit
+            fatal('overflow', nugget_comp, lineno=line_number)
         hexa = '{0:04x}'.format(int(nugget_comp, base))
     return token + hexa[2:] + hexa[:-2]
 
@@ -193,6 +201,9 @@ class Args:
         for k, v in vars(parsed_args).items():
             setattr(self, k, v)
 
+        if not self.input:
+            raise RuntimeError('input file not specified')
+
         if not self.output:
             self.output = os.path.splitext(self.input)[0] + '.bas'
         if self.output == self.input:
@@ -220,18 +231,15 @@ lines_num = 0
 
 show_log('', 'Loading file', 3)
 ascii_code = []
-if args.input:
-    show_log('', ' '.join(['load_file:', args.input]), 4)
-    try:
-        with open(args.input, 'r', encoding='latin1') as f:
-            for line in f:
-                if line.strip() == "" or line.strip().isdigit():
-                    continue
-                ascii_code.append(line.strip() + '\r\n')
-    except IOError:
-        show_log('', ' '.join(['source_not_found', args.input]), 1)  # Exit
-else:
-    show_log('', 'source_not_given', 1)  # Exit
+show_log('', ' '.join(['load_file:', args.input]), 4)
+try:
+    with open(args.input, 'r', encoding='latin1') as f:
+        for line in f:
+            if line.strip() == "" or line.strip().isdigit():
+                continue
+            ascii_code.append(line.strip() + '\r\n')
+except IOError:
+    fatal('input not found')
 
 show_log('', 'Start tokenizing', 3)
 base = 0x8001
@@ -251,7 +259,7 @@ for line_source in ascii_code:
         if ord(line_source[0]) == 26:  # Avoid '' on last line of some listings
             continue
         else:
-            show_log(line_number, ' '.join(['line_not_starting_with_number']), 1)  # Exit
+            fatal('line_not_starting_with_number', lineno=line_number)
 
     if line_source == '':
         continue
@@ -265,9 +273,9 @@ for line_source in ascii_code:
     nugget = re.match(r'\s*\d+\s?', line_source).group()
     line_number = nugget.strip()
     if int(line_number) <= line_order:
-        show_log(line_number, ' '.join(['line_number_out_of_order', str(line_number)]), 1)  # Exit
+        fatal('line_number_out_of_order', str(line_number), lineno=line_number)
     if int(line_number) > 65529:
-        show_log(line_number, ' '.join(['line_number_too_high', str(line_number)]), 1)  # Exit
+        fatal('line_number_too_high', str(line_number), lineno=line_number)
     line_order = int(line_number)
     line_source = line_source[len(nugget):]
     hexa = '{0:04x}'.format(int(nugget))
@@ -303,7 +311,8 @@ for line_source in ascii_code:
                             nugget_line = nugget.group(2)
                             if nugget_line.isdigit():
                                 if int(nugget_line) > 65529:
-                                    show_log(line_number, ' '.join(['line_number_jump_too_high', str(nugget_line)]), 1)  # Exit
+                                    fatal('line_number_jump_too_high',
+                                        str(nugget_line), lineno=line_number)
                                 hex_spaces = '20' * len(nugget_spaces)
                                 hexa = '{0:04x}'.format(int(nugget_line))
                                 compiled = hex_spaces + '0e' + hexa[2:] + hexa[:-2]
@@ -365,7 +374,7 @@ for line_source in ascii_code:
                     nugget_number = nugget_integer
                     is_int = True
                     if int(nugget_number) >= 32768:
-                        show_log(line_number, ' '.join(['overflow', str(nugget_number)]), 1)  # Exit
+                        fatal('overflow', str(nugget_number), lineno=line_number)
                 elif nugget_signal != '%' and nugget_signal != '!' and nugget_signal != '#' and \
                         ((nugget_signal.lower() != 'e' and nugget_signal.lower() != 'd') or
                          (nugget_notif_confirm != '-' and nugget_notif_confirm != '+')):
@@ -382,7 +391,7 @@ for line_source in ascii_code:
                     nugget_man_size = nugget_exp_size - len(nugget_fractional[1:]) - len(nugget_integer.lstrip('0'))
 
                     if nugget_exp_size > 63 or nugget_exp_size < -64:
-                        show_log(line_number, ' '.join(['overflow', str(nugget_number)]), 1)  # Exit
+                        fatal('overflow', str(nugget_number), lineno=line_number)
 
                     fractional = abs(nugget_man_size) if nugget_man_size < 0 else 0
                     notation = '%.*f' % (fractional, int(nugget_number) * (10 ** (nugget_man_size)))
@@ -437,7 +446,8 @@ for line_source in ascii_code:
                     hexa = '1c' + hexa[2:] + hexa[:-2]
 
                 else:
-                    show_log(line_number, ' '.join(['number_too_high', str(nugget_number.lstrip('0'))]), 1)  # Exit
+                    fatal('number_too_high', str(nugget_number.lstrip('0')),
+                        lineno=line_number)
 
                 compiled = hexa
                 source = len(nugget_integer) + len(nugget_fractional) + len(nugget_signal)
