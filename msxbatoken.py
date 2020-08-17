@@ -39,7 +39,6 @@ from datetime import datetime
 from os import remove as osremove
 
 export_list = 0             # Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32) (0 no)
-delete_original = False     # Delete the original ASCII file
 verbose_level = 3           # Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump
 is_from_build = False       # Tell if it is being called from a build system (show file name on error messages and other stuff)
 
@@ -225,7 +224,6 @@ if args.version:
 
 bytes_width = min(abs(args.el), 32)
 export_list = True if args.el > 0 else False
-delete_original = args.do
 verbose_level = args.vb
 is_from_build = args.frb
 
@@ -555,7 +553,7 @@ with open(args.output, 'wb') as f:
     for line in tokenized_code:
         f.write(binascii.unhexlify(line))
 
-if delete_original:
+if args.do:
     if os.path.isfile(args.output):
         show_log('', 'Deleting source', 3)
         show_log('', ' '.join(['delete_file:', args.input]), 4)
