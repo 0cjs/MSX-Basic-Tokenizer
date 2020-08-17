@@ -39,7 +39,6 @@ from datetime import datetime
 from os import remove as osremove
 
 export_list = 0             # Save a .mlt list file detailing the tokenization: [#] number of bytes per line (def 16) (max 32) (0 no)
-verbose_level = 3           # Verbosity level: 0 silent, 1 errors, 2 +warnings, 3 +steps(def), 4 +details, 5 +conversion dump
 
 TOKENS = [
     ('>', 'ee'), ('PAINT', 'bf'), ('=', 'ef'), ('ERROR', 'a6'), ('ERR', 'e2'),
@@ -109,7 +108,7 @@ def show_log(line_number, text, level, **kwargs):
 
     line_number = '(' + str(line_number) + '): ' if line_number != '' else ''
 
-    if verbose_level >= level:
+    if args.vb >= level:
         print(bullets[bullet] + display_file_name + line_number + text)
 
     if bullet == 1:
@@ -218,7 +217,6 @@ if args.version:
 
 bytes_width = min(abs(args.el), 32)
 export_list = True if args.el > 0 else False
-verbose_level = args.vb
 
 lines_num = 0
 width_byte = bytes_width * 2
